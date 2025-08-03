@@ -51,8 +51,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const aiResponse = await huggingFaceService.generateRomanticResponse({
           userMessage: messageData.content,
           theme: messageData.theme,
-          partnerName: preferences?.partnerName,
-          relationshipContext: preferences?.relationshipLength,
+          partnerName: preferences?.partnerName || undefined,
+          relationshipContext: preferences?.relationshipLength || undefined,
         });
 
         // Save AI response

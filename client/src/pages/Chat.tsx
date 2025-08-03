@@ -29,13 +29,13 @@ export default function Chat() {
   const queryClient = useQueryClient();
 
   // Fetch messages
-  const { data: messages = [], isLoading: messagesLoading } = useQuery({
+  const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
     retry: false,
   });
 
   // Fetch user preferences
-  const { data: preferences } = useQuery({
+  const { data: preferences } = useQuery<{ partnerName?: string }>({
     queryKey: ["/api/preferences"],
     retry: false,
   });
