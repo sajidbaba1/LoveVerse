@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Palette, Music, MicOff, Send, Smile } from "lucide-react";
+import { Settings, Palette, Music, MicOff, Send, Smile, Users, Bot, Heart } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import { FloatingHearts } from "@/components/FloatingHearts";
 import { VoiceInput, VoiceRecordingIndicator } from "@/components/VoiceInput";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ThemeSelector } from "@/components/ThemeSelector";
+import CoupleConnection from "@/components/CoupleConnection";
 import type { Message, User } from "@shared/schema";
 
 export default function Chat() {
@@ -20,6 +21,8 @@ export default function Chat() {
   const [isThemeSelectorOpen, setIsThemeSelectorOpen] = useState(false);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [chatMode, setChatMode] = useState<'ai' | 'couple'>('ai');
+  const [showCoupleConnection, setShowCoupleConnection] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -40,7 +43,20 @@ export default function Chat() {
     retry: false,
   });
 
-  // Send message mutation
+  // Fetch couple status
+  const { data: coupleStatus } = useQuery<{ couple: any; isConnected: boolean }>({
+    queryKey: ["/api/couple/status"],
+    retry: false,
+  });
+
+  // Fetch couple messages when in couple mode
+  const { data: coupleMessages = [], isLoading: coupleMessagesLoading } = useQuery<Message[]>({
+    queryKey: ["/api/couple/messages"],
+    enabled: chatMode === 'couple' && coupleStatus?.isConnected,
+    retry: false,
+  });
+
+  // Send AI message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       const response = await apiRequest("POST", "/api/messages", {
@@ -77,6 +93,43 @@ export default function Chat() {
     },
   });
 
+  // Send couple message mutation
+  const sendCoupleMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await apiRequest("POST", "/api/couple/messages", {
+        content,
+        messageType: "partner",
+        theme,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/couple/messages"] });
+      setMessageInput("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to send couple message. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Update theme mutation
   const updateThemeMutation = useMutation({
     mutationFn: async (newTheme: string) => {
@@ -98,7 +151,7 @@ export default function Chat() {
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, coupleMessages]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -110,8 +163,12 @@ export default function Chat() {
 
   const handleSendMessage = () => {
     const content = messageInput.trim();
-    if (content && !sendMessageMutation.isPending) {
+    if (!content) return;
+
+    if (chatMode === 'ai' && !sendMessageMutation.isPending) {
       sendMessageMutation.mutate(content);
+    } else if (chatMode === 'couple' && !sendCoupleMessageMutation.isPending) {
+      sendCoupleMessageMutation.mutate(content);
     }
   };
 
@@ -169,16 +226,54 @@ export default function Chat() {
             </Avatar>
             <div>
               <h2 className="font-semibold text-gray-800 dark:text-gray-200">
-                {preferences?.partnerName || 'My Love'} ❤️
+                {chatMode === 'ai' ? (preferences?.partnerName || 'My Love') : 'Your Partner'} ❤️
               </h2>
               <p className="text-sm text-green-500 flex items-center">
                 <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                Online
+                {chatMode === 'ai' ? 'AI Companion' : coupleStatus?.isConnected ? 'Connected' : 'Not Connected'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Chat Mode Toggle */}
+            <div className="flex bg-romantic-accent rounded-full p-1">
+              <Button
+                onClick={() => setChatMode('ai')}
+                size="sm"
+                variant={chatMode === 'ai' ? 'default' : 'ghost'}
+                className={`px-3 py-1 rounded-full text-xs transition-all ${
+                  chatMode === 'ai'
+                    ? 'bg-romantic-primary text-white shadow-sm'
+                    : 'text-romantic-primary hover:bg-romantic-primary/20'
+                }`}
+                title="AI Chat"
+              >
+                <Bot className="w-3 h-3 mr-1" />
+                AI
+              </Button>
+              <Button
+                onClick={() => {
+                  if (coupleStatus?.isConnected) {
+                    setChatMode('couple');
+                  } else {
+                    setShowCoupleConnection(true);
+                  }
+                }}
+                size="sm"
+                variant={chatMode === 'couple' ? 'default' : 'ghost'}
+                className={`px-3 py-1 rounded-full text-xs transition-all ${
+                  chatMode === 'couple'
+                    ? 'bg-romantic-primary text-white shadow-sm'
+                    : 'text-romantic-primary hover:bg-romantic-primary/20'
+                }`}
+                title={coupleStatus?.isConnected ? "Partner Chat" : "Connect with Partner"}
+              >
+                <Users className="w-3 h-3 mr-1" />
+                Partner
+              </Button>
+            </div>
+
             {/* Theme Toggle */}
             <Button
               onClick={() => setIsThemeSelectorOpen(!isThemeSelectorOpen)}
@@ -226,20 +321,58 @@ export default function Chat() {
         onThemeChange={handleThemeChange}
       />
 
+      {/* Couple Connection Modal */}
+      {showCoupleConnection && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full max-h-[80vh] overflow-auto">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Connect with Partner</h3>
+                <Button
+                  onClick={() => setShowCoupleConnection(false)}
+                  size="sm"
+                  variant="ghost"
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </Button>
+              </div>
+            </div>
+            <div className="p-4">
+              <CoupleConnection />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 relative z-10">
-        {messagesLoading ? (
+        {(chatMode === 'ai' ? messagesLoading : coupleMessagesLoading) ? (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-romantic-primary"></div>
           </div>
-        ) : messages.length === 0 ? (
+        ) : (chatMode === 'ai' ? messages : coupleMessages).length === 0 ? (
           <div className="text-center py-8">
             <div className="text-4xl mb-4">💕</div>
-            <p className="text-gray-600 dark:text-gray-400 mb-2">Start your romantic conversation!</p>
-            <p className="text-sm text-gray-500 dark:text-gray-500">Send your first message to begin chatting with your AI companion.</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-2">
+              {chatMode === 'ai' 
+                ? 'Start your romantic conversation!' 
+                : coupleStatus?.isConnected 
+                  ? 'Start chatting with your partner!'
+                  : 'Connect with your partner to start chatting!'
+              }
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-500">
+              {chatMode === 'ai' 
+                ? 'Send your first message to begin chatting with your AI companion.'
+                : coupleStatus?.isConnected
+                  ? 'Send your first message to your partner.'
+                  : 'Use the Partner button to connect with your partner.'
+              }
+            </p>
           </div>
         ) : (
-          messages.map((message: Message) => (
+          (chatMode === 'ai' ? messages : coupleMessages).map((message: Message) => (
             <ChatMessage key={message.id} message={message} />
           ))
         )}
@@ -308,7 +441,7 @@ export default function Chat() {
           {/* Send Button */}
           <Button
             onClick={handleSendMessage}
-            disabled={!messageInput.trim() || sendMessageMutation.isPending}
+            disabled={!messageInput.trim() || sendMessageMutation.isPending || sendCoupleMessageMutation.isPending}
             size="icon"
             className="bg-romantic-primary text-white rounded-full hover:bg-romantic-secondary transition-all duration-300 transform hover:scale-105 flex-shrink-0"
             title="Send message"

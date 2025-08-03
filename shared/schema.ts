@@ -39,8 +39,9 @@ export const users = pgTable("users", {
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  coupleId: varchar("couple_id").references(() => couples.id, { onDelete: 'cascade' }),
   content: text("content").notNull(),
-  messageType: varchar("message_type", { length: 10 }).notNull(), // 'user' or 'ai'
+  messageType: varchar("message_type", { length: 10 }).notNull(), // 'user', 'ai', 'partner'
   timestamp: timestamp("timestamp").defaultNow(),
   theme: varchar("theme", { length: 20 }).notNull(),
 });
@@ -51,6 +52,17 @@ export const chatSessions = pgTable("chat_sessions", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: varchar("title", { length: 255 }).notNull().default('New Chat'),
   lastMessageAt: timestamp("last_message_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Couples table for connecting partners
+export const couples = pgTable("couples", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  user1Id: varchar("user1_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  user2Id: varchar("user2_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  connectionCode: varchar("connection_code", { length: 10 }).unique().notNull(),
+  status: varchar("status", { length: 20 }).default('pending'), // 'pending', 'connected', 'disconnected'
+  connectedAt: timestamp("connected_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -90,6 +102,10 @@ export const insertUserPreferencesSchema = createInsertSchema(userPreferences).p
   personalityType: true,
 });
 
+export const insertCoupleSchema = createInsertSchema(couples).pick({
+  connectionCode: true,
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
@@ -98,3 +114,5 @@ export type InsertChatSession = z.infer<typeof insertChatSessionSchema>;
 export type ChatSession = typeof chatSessions.$inferSelect;
 export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;
+export type InsertCouple = z.infer<typeof insertCoupleSchema>;
+export type Couple = typeof couples.$inferSelect;

@@ -2,7 +2,14 @@
 
 ## Overview
 
-LoveVerse is a romantic AI-powered chat application that provides personalized, theme-based conversations with an AI companion. The application features multiple romantic themes (romantic, vintage, night), voice interactions, and a beautiful, responsive user interface built with modern web technologies.
+LoveVerse is a romantic AI-powered chat application that provides personalized, theme-based conversations with an AI companion AND real partner connections. The application features multiple romantic themes (romantic, vintage, night), voice interactions, couple chat functionality with connection codes, and a beautiful, responsive user interface built with modern web technologies.
+
+## Recent Changes
+
+- **January 2025**: Added couple connection system allowing users to connect with their real partners using unique connection codes
+- **January 2025**: Implemented dual chat modes: AI companion chat and partner-to-partner chat
+- **January 2025**: Enhanced database schema to support couples and partner messages
+- **January 2025**: Created comprehensive couple connection UI with mode switching
 
 ## User Preferences
 
@@ -37,12 +44,13 @@ The backend implements a RESTful API design with authenticated endpoints for use
 The application uses PostgreSQL with the following key tables:
 
 - **users**: Stores user profiles with theme preferences and settings
-- **messages**: Chat history with message type (user/ai), content, and theme context
+- **couples**: Manages partner connections with unique connection codes and status tracking
+- **messages**: Chat history with message type (user/ai/partner), content, theme context, and couple association
 - **chatSessions**: Conversation organization and management
 - **userPreferences**: User-specific settings and customizations
 - **sessions**: Session storage for authentication (Replit Auth requirement)
 
-The schema uses UUIDs for primary keys and includes proper referential integrity with cascading deletes.
+The schema uses UUIDs for primary keys and includes proper referential integrity with cascading deletes. The couples table enables secure partner connections through generated codes.
 
 ### AI Integration
 The application integrates with Hugging Face's inference API for AI-powered responses:
@@ -66,6 +74,15 @@ The application includes browser-based speech capabilities:
 - **Speech Recognition**: Web Speech API for voice input conversion to text
 - **Text-to-Speech**: Web Speech API for reading AI responses aloud
 - **Browser Compatibility**: Progressive enhancement with fallbacks for unsupported browsers
+
+### Couple Connection System
+Secure partner connection and chat functionality:
+
+- **Connection Codes**: 6-character unique codes for partner pairing
+- **Dual Chat Modes**: Toggle between AI companion and partner chat
+- **Real-time Messaging**: Direct partner-to-partner communication
+- **Connection Management**: Create, connect, and disconnect partner relationships
+- **Status Tracking**: Monitor connection status and partner availability
 
 ### Theme System
 Dynamic theming system with CSS custom properties:

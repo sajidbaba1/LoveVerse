@@ -3,6 +3,7 @@ import {
   messages,
   chatSessions,
   userPreferences,
+  couples,
   type User,
   type UpsertUser,
   type Message,
@@ -11,9 +12,11 @@ import {
   type InsertChatSession,
   type UserPreferences,
   type InsertUserPreferences,
+  type Couple,
+  type InsertCouple,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -21,8 +24,9 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   
   // Message operations
-  createMessage(userId: string, message: InsertMessage): Promise<Message>;
+  createMessage(userId: string, message: InsertMessage, coupleId?: string): Promise<Message>;
   getMessages(userId: string, limit?: number): Promise<Message[]>;
+  getCoupleMessages(coupleId: string, limit?: number): Promise<Message[]>;
   
   // Chat session operations
   createChatSession(userId: string, session: InsertChatSession): Promise<ChatSession>;
@@ -31,6 +35,12 @@ export interface IStorage {
   // User preferences operations
   getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
   updateUserPreferences(userId: string, preferences: InsertUserPreferences): Promise<UserPreferences>;
+  
+  // Couple operations
+  createConnectionCode(userId: string): Promise<string>;
+  connectWithPartner(userId: string, connectionCode: string): Promise<Couple>;
+  getUserCouple(userId: string): Promise<Couple | undefined>;
+  disconnectCouple(userId: string): Promise<void>;
   
   // Theme and settings
   updateUserTheme(userId: string, theme: string): Promise<User>;
@@ -58,12 +68,13 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createMessage(userId: string, message: InsertMessage): Promise<Message> {
+  async createMessage(userId: string, message: InsertMessage, coupleId?: string): Promise<Message> {
     const [newMessage] = await db
       .insert(messages)
       .values({
         ...message,
         userId,
+        coupleId,
       })
       .returning();
     return newMessage;
@@ -144,6 +155,108 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  // Generate a unique 6-character connection code
+  private generateConnectionCode(): string {
+    return Math.random().toString(36).substr(2, 6).toUpperCase();
+  }
+
+  async createConnectionCode(userId: string): Promise<string> {
+    let connectionCode: string;
+    let isUnique = false;
+    
+    // Keep generating codes until we find a unique one
+    do {
+      connectionCode = this.generateConnectionCode();
+      const existing = await db
+        .select()
+        .from(couples)
+        .where(eq(couples.connectionCode, connectionCode));
+      isUnique = existing.length === 0;
+    } while (!isUnique);
+
+    // Create couple entry with the user as user1
+    await db.insert(couples).values({
+      user1Id: userId,
+      user2Id: '', // Will be filled when partner connects
+      connectionCode,
+      status: 'pending',
+    });
+
+    return connectionCode;
+  }
+
+  async connectWithPartner(userId: string, connectionCode: string): Promise<Couple> {
+    // Find the existing couple entry
+    const [existingCouple] = await db
+      .select()
+      .from(couples)
+      .where(eq(couples.connectionCode, connectionCode));
+
+    if (!existingCouple) {
+      throw new Error('Invalid connection code');
+    }
+
+    if (existingCouple.user1Id === userId) {
+      throw new Error('Cannot connect with yourself');
+    }
+
+    if (existingCouple.status === 'connected') {
+      throw new Error('Connection code already used');
+    }
+
+    // Update the couple entry with user2 and set status to connected
+    const [updatedCouple] = await db
+      .update(couples)
+      .set({
+        user2Id: userId,
+        status: 'connected',
+        connectedAt: new Date(),
+      })
+      .where(eq(couples.id, existingCouple.id))
+      .returning();
+
+    return updatedCouple;
+  }
+
+  async getUserCouple(userId: string): Promise<Couple | undefined> {
+    const [couple] = await db
+      .select()
+      .from(couples)
+      .where(
+        and(
+          eq(couples.status, 'connected'),
+          // User can be either user1 or user2
+          or(eq(couples.user1Id, userId), eq(couples.user2Id, userId))
+        )
+      );
+    return couple;
+  }
+
+  async getCoupleMessages(coupleId: string, limit: number = 50): Promise<Message[]> {
+    const coupleMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.coupleId, coupleId))
+      .orderBy(desc(messages.timestamp))
+      .limit(limit);
+    
+    return coupleMessages.reverse(); // Return in chronological order
+  }
+
+  async disconnectCouple(userId: string): Promise<void> {
+    await db
+      .update(couples)
+      .set({
+        status: 'disconnected',
+      })
+      .where(
+        and(
+          eq(couples.status, 'connected'),
+          or(eq(couples.user1Id, userId), eq(couples.user2Id, userId))
+        )
+      );
   }
 }
 

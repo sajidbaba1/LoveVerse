@@ -158,6 +158,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Couple connection routes
+  app.post('/api/couple/create-code', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const connectionCode = await storage.createConnectionCode(userId);
+      res.json({ connectionCode });
+    } catch (error) {
+      console.error("Error creating connection code:", error);
+      res.status(500).json({ message: "Failed to create connection code" });
+    }
+  });
+
+  app.post('/api/couple/connect', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { connectionCode } = req.body;
+      
+      if (!connectionCode) {
+        return res.status(400).json({ message: "Connection code is required" });
+      }
+      
+      const couple = await storage.connectWithPartner(userId, connectionCode);
+      res.json(couple);
+    } catch (error: any) {
+      console.error("Error connecting with partner:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/couple/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const couple = await storage.getUserCouple(userId);
+      res.json({ couple, isConnected: !!couple });
+    } catch (error) {
+      console.error("Error fetching couple status:", error);
+      res.status(500).json({ message: "Failed to fetch couple status" });
+    }
+  });
+
+  app.post('/api/couple/disconnect', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.disconnectCouple(userId);
+      res.json({ message: "Successfully disconnected from partner" });
+    } catch (error) {
+      console.error("Error disconnecting couple:", error);
+      res.status(500).json({ message: "Failed to disconnect from partner" });
+    }
+  });
+
+  // Couple messages routes
+  app.get('/api/couple/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const couple = await storage.getUserCouple(userId);
+      
+      if (!couple) {
+        return res.status(404).json({ message: "No partner connection found" });
+      }
+      
+      const limit = parseInt(req.query.limit as string) || 50;
+      const messages = await storage.getCoupleMessages(couple.id, limit);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching couple messages:", error);
+      res.status(500).json({ message: "Failed to fetch couple messages" });
+    }
+  });
+
+  app.post('/api/couple/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const couple = await storage.getUserCouple(userId);
+      
+      if (!couple) {
+        return res.status(404).json({ message: "No partner connection found" });
+      }
+      
+      const messageData = insertMessageSchema.parse(req.body);
+      
+      // Create partner message (not AI message)
+      const partnerMessage = await storage.createMessage(userId, {
+        ...messageData,
+        messageType: 'partner'
+      }, couple.id);
+      
+      res.json({ partnerMessage });
+    } catch (error) {
+      console.error("Error creating couple message:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid message data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create couple message" });
+      }
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
