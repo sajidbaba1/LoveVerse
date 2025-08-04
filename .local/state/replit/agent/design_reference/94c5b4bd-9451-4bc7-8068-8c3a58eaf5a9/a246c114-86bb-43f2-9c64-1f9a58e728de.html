@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoveVerse - Romantic AI Chat for Couples</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                        'pacifico': ['Pacifico', 'cursive']
+                    },
+                    colors: {
+                        romantic: {
+                            primary: '#FF6B9D',
+                            secondary: '#C44569',
+                            accent: '#FFE0E6',
+                            light: '#FFF5F7'
+                        },
+                        vintage: {
+                            primary: '#D4A574',
+                            secondary: '#8B4513',
+                            accent: '#F5E6D3',
+                            light: '#FDF5E6'
+                        },
+                        night: {
+                            primary: '#6C63FF',
+                            secondary: '#2D3748',
+                            accent: '#4A5568',
+                            light: '#1A202C'
+                        }
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'pulse-heart': 'pulse-heart 2s ease-in-out infinite',
+                        'slide-up': 'slide-up 0.3s ease-out',
+                        'fade-in': 'fade-in 0.5s ease-in'
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        'pulse-heart': {
+                            '0%, 100%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(1.1)' }
+                        },
+                        'slide-up': {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        },
+                        'fade-in': {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .heart-float {
+            position: absolute;
+            animation: float-up 4s linear infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes float-up {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .chat-message {
+            animation: slide-up 0.3s ease-out;
+        }
+        
+        .theme-romantic {
+            background: linear-gradient(135deg, #FFE0E6 0%, #FFF5F7 100%);
+        }
+        
+        .theme-vintage {
+            background: linear-gradient(135deg, #F5E6D3 0%, #FDF5E6 100%);
+        }
+        
+        .theme-night {
+            background: linear-gradient(135deg, #2D3748 0%, #1A202C 100%);
+        }
+        
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .voice-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 107, 157, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 107, 157, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 107, 157, 0); }
+        }
+    </style>
+</head>
+<body class="font-inter theme-romantic min-h-screen transition-all duration-500" id="app-body">
+    <!-- Floating Hearts Background -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0" id="hearts-container">
+        <!-- Hearts will be dynamically added here -->
+    </div>
+
+    <!-- App Container -->
+    <div class="relative z-10 min-h-screen">
+        <!-- Login Screen -->
+        <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
+            <div class="w-full max-w-md">
+                <!-- Logo and Title -->
+                <div class="text-center mb-8 animate-fade-in">
+                    <div class="inline-flex items-center justify-center w-20 h-20 bg-romantic-primary rounded-full mb-4 animate-pulse-heart">
+                        <i class="fas fa-heart text-white text-2xl"></i>
+                    </div>
+                    <h1 class="font-pacifico text-4xl text-romantic-primary mb-2">LoveVerse</h1>
+                    <p class="text-gray-600 text-lg">Your Romantic AI Chat Companion</p>
+                </div>
+
+                <!-- Login Card -->
+                <div class="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white/20">
+                    <div class="space-y-6">
+                        <!-- Email Input -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                            <input type="email" class="w-full px-4 py-3 rounded-2xl border border-romantic-accent focus:border-romantic-primary focus:ring-2 focus:ring-romantic-primary/20 transition-all" placeholder="your@email.com" data-mock="true">
+                        </div>
+
+                        <!-- Password Input -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                            <input type="password" class="w-full px-4 py-3 rounded-2xl border border-romantic-accent focus:border-romantic-primary focus:ring-2 focus:ring-romantic-primary/20 transition-all" placeholder="••••••••" data-mock="true">
+                        </div>
+
+                        <!-- Login Button -->
+                        <button onclick="showChatScreen()" class="w-full bg-romantic-primary text-white py-3 rounded-2xl font-semibold hover:bg-romantic-secondary transition-all duration-300 transform hover:scale-105" data-event="click:handleLogin">
+                            Sign In to Love <i class="fas fa-heart ml-2"></i>
+                        </button>
+
+                        <!-- Google Login -->
+                        <button class="w-full bg-white border border-gray-300 text-gray-700 py-3 rounded-2xl font-medium hover:bg-gray-50 transition-all duration-300 flex items-center justify-center" data-event="click:handleGoogleLogin">
+                            <i class="fab fa-google mr-3 text-red-500"></i>
+                            Continue with Google
+                        </button>
+
+                        <!-- Love Quote -->
+                        <div class="text-center pt-4 border-t border-romantic-accent">
+                            <p class="text-romantic-secondary font-pacifico text-sm" data-mock="true">"Love is not just looking at each other, it's looking in the same direction."</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Screen -->
+        <div id="chat-screen" class="hidden min-h-screen flex flex-col">
+            <!-- Header -->
+            <header class="bg-white/90 backdrop-blur-lg border-b border-romantic-accent p-4 sticky top-0 z-20">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <!-- A romantic couple sharing an intimate moment with soft lighting -->
+                        <img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100" alt="Partner avatar" class="w-12 h-12 rounded-full object-cover border-2 border-romantic-primary">
+                        <div>
+                            <h2 class="font-semibold text-gray-800" data-bind="partner.name" data-mock="true">My Love ❤️</h2>
+                            <p class="text-sm text-green-500 flex items-center">
+                                <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                                Online
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <!-- Theme Toggle -->
+                        <button onclick="toggleTheme()" class="p-2 rounded-full bg-romantic-accent hover:bg-romantic-primary hover:text-white transition-all duration-300" title="Toggle Theme" data-event="click:handleThemeToggle">
+                            <i class="fas fa-palette text-lg"></i>
+                        </button>
+
+                        <!-- Music Toggle -->
+                        <button onclick="toggleMusic()" class="p-2 rounded-full bg-romantic-accent hover:bg-romantic-primary hover:text-white transition-all duration-300" title="Toggle Music" data-event="click:handleMusicToggle">
+                            <i id="music-icon" class="fas fa-music text-lg"></i>
+                        </button>
+
+                        <!-- Settings -->
+                        <button class="p-2 rounded-full bg-romantic-accent hover:bg-romantic-primary hover:text-white transition-all duration-300" title="Settings">
+                            <i class="fas fa-cog text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Theme Selector (Hidden by default) -->
+            <div id="theme-selector" class="hidden absolute top-20 right-4 bg-white/90 backdrop-blur-lg rounded-2xl p-4 shadow-xl border border-romantic-accent z-30 animate-slide-up">
+                <div class="space-y-2">
+                    <button onclick="setTheme('romantic')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-romantic-accent transition-all">
+                        <div class="w-4 h-4 bg-romantic-primary rounded-full"></div>
+                        <span class="font-medium">Romantic</span>
+                        <i class="fas fa-heart text-romantic-primary ml-auto"></i>
+                    </button>
+                    <button onclick="setTheme('vintage')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-vintage-accent transition-all">
+                        <div class="w-4 h-4 bg-vintage-primary rounded-full"></div>
+                        <span class="font-medium">Vintage</span>
+                        <i class="fas fa-camera-retro text-vintage-primary ml-auto"></i>
+                    </button>
+                    <button onclick="setTheme('night')" class="w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-night-accent transition-all">
+                        <div class="w-4 h-4 bg-night-primary rounded-full"></div>
+                        <span class="font-medium">Night</span>
+                        <i class="fas fa-moon text-night-primary ml-auto"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages">
+                <!-- @MAP: messages.map(message => ( -->
+                
+                <!-- Partner Message -->
+                <div class="flex items-start space-x-3 chat-message">
+                    <!-- A romantic couple sharing an intimate moment with soft lighting -->
+                    <img src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=50&h=50" alt="Partner" class="w-10 h-10 rounded-full object-cover border-2 border-romantic-primary">
+                    <div class="flex-1">
+                        <div class="bg-white rounded-2xl rounded-tl-md p-4 shadow-md max-w-xs">
+                            <p class="text-gray-800" data-mock="true">Good morning my love! I've been thinking about you all night 💕</p>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-xs text-gray-500">9:30 AM</span>
+                                <button onclick="readMessage(this)" class="text-romantic-primary hover:text-romantic-secondary" title="Read aloud" data-event="click:handleTextToSpeech">
+                                    <i class="fas fa-volume-up text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2 mt-2">
+                            <button class="text-romantic-primary hover:scale-125 transition-transform" data-event="click:handleReaction">❤️</button>
+                            <button class="text-romantic-primary hover:scale-125 transition-transform" data-event="click:handleReaction">😘</button>
+                            <button class="text-romantic-primary hover:scale-125 transition-transform" data-event="click:handleReaction">🥰</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Response -->
+                <div class="flex items-start space-x-3 chat-message">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-r from-romantic-primary to-romantic-secondary flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-gradient-to-r from-romantic-primary to-romantic-secondary text-white rounded-2xl rounded-tl-md p-4 shadow-md max-w-xs">
+                            <p data-mock="true">That's so sweet! Your love always makes my circuits warm with joy! 💖✨ Here's a romantic thought for your day...</p>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-xs text-white/80">9:31 AM</span>
+                                <div class="flex space-x-2">
+                                    <button onclick="readMessage(this)" class="text-white/80 hover:text-white" title="Read aloud" data-event="click:handleTextToSpeech">
+                                        <i class="fas fa-volume-up text-sm"></i>
+                                    </button>
+                                    <button class="text-white/80 hover:text-white" title="AI Response" data-event="click:handleAIResponse">
+                                        <i class="fas fa-brain text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Message -->
+                <div class="flex items-end space-x-3 justify-end chat-message">
+                    <div class="flex-1 flex justify-end">
+                        <div class="bg-romantic-accent rounded-2xl rounded-tr-md p-4 shadow-md max-w-xs">
+                            <p class="text-gray-800" data-mock="true">I love you too! Can't wait to see you tonight 😍</p>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-xs text-gray-500">9:32 AM</span>
+                                <div class="flex space-x-1">
+                                    <i class="fas fa-check text-gray-400 text-xs"></i>
+                                    <i class="fas fa-check text-romantic-primary text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-romantic-primary flex items-center justify-center">
+                        <span class="text-white font-semibold text-sm" data-bind="user.initials" data-mock="true">You</span>
+                    </div>
+                </div>
+
+                <!-- @END_MAP )) -->
+            </div>
+
+            <!-- Message Input -->
+            <div class="bg-white/90 backdrop-blur-lg border-t border-romantic-accent p-4 sticky bottom-0">
+                <!-- Quick Responses -->
+                <div class="flex space-x-2 mb-3 overflow-x-auto pb-2" id="quick-responses">
+                    <button onclick="sendQuickMessage('I love you ❤️')" class="px-4 py-2 bg-romantic-accent text-romantic-primary rounded-full text-sm whitespace-nowrap hover:bg-romantic-primary hover:text-white transition-all" data-event="click:handleQuickResponse">
+                        I love you ❤️
+                    </button>
+                    <button onclick="sendQuickMessage('Missing you 💕')" class="px-4 py-2 bg-romantic-accent text-romantic-primary rounded-full text-sm whitespace-nowrap hover:bg-romantic-primary hover:text-white transition-all" data-event="click:handleQuickResponse">
+                        Missing you 💕
+                    </button>
+                    <button onclick="sendQuickMessage('Good night 🌙')" class="px-4 py-2 bg-romantic-accent text-romantic-primary rounded-full text-sm whitespace-nowrap hover:bg-romantic-primary hover:text-white transition-all" data-event="click:handleQuickResponse">
+                        Good night 🌙
+                    </button>
+                </div>
+
+                <!-- Input Area -->
+                <div class="flex items-end space-x-3">
+                    <!-- Voice Input Button -->
+                    <button id="voice-btn" onclick="toggleVoiceInput()" class="p-3 bg-romantic-primary text-white rounded-full hover:bg-romantic-secondary transition-all duration-300 flex-shrink-0" title="Voice Input" data-event="click:handleVoiceInput">
+                        <i id="voice-icon" class="fas fa-microphone"></i>
+                    </button>
+
+                    <!-- Text Input -->
+                    <div class="flex-1 relative">
+                        <textarea id="message-input" placeholder="Type your message..." class="w-full px-4 py-3 pr-12 rounded-2xl border border-romantic-accent focus:border-romantic-primary focus:ring-2 focus:ring-romantic-primary/20 resize-none max-h-32 transition-all" rows="1" data-mock="true"></textarea>
+                        <button class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-romantic-primary transition-colors" title="Add emoji" data-event="click:handleEmojiPicker">
+                            <i class="fas fa-smile"></i>
+                        </button>
+                    </div>
+
+                    <!-- Send Button -->
+                    <button onclick="sendMessage()" class="p-3 bg-romantic-primary text-white rounded-full hover:bg-romantic-secondary transition-all duration-300 transform hover:scale-105 flex-shrink-0" title="Send message" data-event="click:handleSendMessage">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+
+                <!-- Voice Recording Indicator -->
+                <div id="voice-recording" class="hidden mt-3 p-3 bg-romantic-accent rounded-2xl flex items-center justify-center space-x-3">
+                    <div class="w-3 h-3 bg-romantic-primary rounded-full animate-pulse"></div>
+                    <span class="text-romantic-primary font-medium">Listening... Speak now</span>
+                    <button onclick="stopVoiceInput()" class="text-romantic-primary hover:text-romantic-secondary" data-event="click:handleStopVoice">
+                        <i class="fas fa-stop-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Background Music -->
+    <audio id="background-music" loop>
+        <!-- Romantic background music would be loaded here -->
+        <source src="romantic-music.mp3" type="audio/mpeg" data-implementation="Add romantic background music files">
+    </audio>
+
+    <script>
+        // Global state
+        let currentTheme = 'romantic';
+        let isRecording = false;
+        let musicPlaying = false;
+        let recognition = null;
+
+        // Initialize app
+        (function() {
+            createFloatingHearts();
+            initializeVoiceRecognition();
+            initializeTextToSpeech();
+            
+            // Auto-resize textarea
+            const messageInput = document.getElementById('message-input');
+            if (messageInput) {
+                messageInput.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = Math.min(this.scrollHeight, 128) + 'px';
+                });
+            }
+        })();
+
+        // Show chat screen
+        function showChatScreen() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('chat-screen').classList.remove('hidden');
+            // TODO: Implement Firebase authentication
+        }
+
+        // Theme management
+        function toggleTheme() {
+            const selector = document.getElementById('theme-selector');
+            selector.classList.toggle('hidden');
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            const body = document.getElementById('app-body');
+            
+            // Remove existing theme classes
+            body.classList.remove('theme-romantic', 'theme-vintage', 'theme-night');
+            
+            // Add new theme class
+            body.classList.add(`theme-${theme}`);
+            
+            // Update colors based on theme
+            updateThemeColors(theme);
+            
+            // Hide theme selector
+            document.getElementById('theme-selector').classList.add('hidden');
+            
+            // Change background music
+            changeBackgroundMusic(theme);
+            
+            // Trigger heart animation
+            createThemeHearts(theme);
+        }
+
+        function updateThemeColors(theme) {
+            const root = document.documentElement;
+            const themes = {
+                romantic: {
+                    primary: '#FF6B9D',
+                    secondary: '#C44569',
+                    accent: '#FFE0E6'
+                },
+                vintage: {
+                    primary: '#D4A574',
+                    secondary: '#8B4513',
+                    accent: '#F5E6D3'
+                },
+                night: {
+                    primary: '#6C63FF',
+                    secondary: '#2D3748',
+                    accent: '#4A5568'
+                }
+            };
+            
+            // TODO: Update CSS custom properties for theme colors
+        }
+
+        // Music controls
+        function toggleMusic() {
+            const music = document.getElementById('background-music');
+            const icon = document.getElementById('music-icon');
+            
+            if (musicPlaying) {
+                music.pause();
+                icon.classList.remove('fa-music');
+                icon.classList.add('fa-music-slash');
+                musicPlaying = false;
+            } else {
+                music.play().catch(e => console.log('Music autoplay blocked'));
+                icon.classList.remove('fa-music-slash');
+                icon.classList.add('fa-music');
+                musicPlaying = true;
+            }
+        }
+
+        function changeBackgroundMusic(theme) {
+            // TODO: Implement theme-based background music switching
+            const music = document.getElementById('background-music');
+            const musicFiles = {
+                romantic: 'romantic-music.mp3',
+                vintage: 'vintage-music.mp3',
+                night: 'ambient-music.mp3'
+            };
+            
+            // music.src = musicFiles[theme];
+        }
+
+        // Voice input
+        function initializeVoiceRecognition() {
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+                
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('message-input').value = transcript;
+                    stopVoiceInput();
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    stopVoiceInput();
+                };
+            }
+        }
+
+        function toggleVoiceInput() {
+            if (!isRecording) {
+                startVoiceInput();
+            } else {
+                stopVoiceInput();
+            }
+        }
+
+        function startVoiceInput() {
+            if (recognition) {
+                isRecording = true;
+                recognition.start();
+                
+                // Update UI
+                document.getElementById('voice-btn').classList.add('voice-pulse');
+                document.getElementById('voice-icon').classList.remove('fa-microphone');
+                document.getElementById('voice-icon').classList.add('fa-stop');
+                document.getElementById('voice-recording').classList.remove('hidden');
+            }
+        }
+
+        function stopVoiceInput() {
+            if (recognition && isRecording) {
+                isRecording = false;
+                recognition.stop();
+                
+                // Update UI
+                document.getElementById('voice-btn').classList.remove('voice-pulse');
+                document.getElementById('voice-icon').classList.remove('fa-stop');
+                document.getElementById('voice-icon').classList.add('fa-microphone');
+                document.getElementById('voice-recording').classList.add('hidden');
+            }
+        }
+
+        // Text-to-Speech
+        function initializeTextToSpeech() {
+            // Initialize speech synthesis
+            if ('speechSynthesis' in window) {
+                // TTS is available
+            }
+        }
+
+        function readMessage(button) {
+            const messageElement = button.closest('.bg-white, .bg-gradient-to-r').querySelector('p');
+            const text = messageElement.textContent;
+            
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.8;
+                utterance.pitch = 1.2;
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Message handling
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                addMessageToChat(message, 'user');
+                input.value = '';
+                input.style.height = 'auto';
+                
+                // TODO: Send to Hugging Face API for AI response
+                setTimeout(() => {
+                    generateAIResponse(message);
+                }, 1000);
+            }
+        }
+
+        function sendQuickMessage(message) {
+            addMessageToChat(message, 'user');
+            
+            // TODO: Send to Hugging Face API for AI response
+            setTimeout(() => {
+                generateAIResponse(message);
+            }, 1000);
+        }
+
+        function addMessageToChat(message, sender) {
+            const chatMessages = document.getElementById('chat-messages');
+            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            let messageHTML = '';
+            
+            if (sender === 'user') {
+                messageHTML = `
+                    <div class="flex items-end space-x-3 justify-end chat-message">
+                        <div class="flex-1 flex justify-end">
+                            <div class="bg-romantic-accent rounded-2xl rounded-tr-md p-4 shadow-md max-w-xs">
+                                <p class="text-gray-800">${message}</p>
+                                <div class="flex items-center justify-between mt-2">
+                                    <span class="text-xs text-gray-500">${timestamp}</span>
+                                    <div class="flex space-x-1">
+                                        <i class="fas fa-check text-gray-400 text-xs"></i>
+                                        <i class="fas fa-check text-romantic-primary text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-romantic-primary flex items-center justify-center">
+                            <span class="text-white font-semibold text-sm">You</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            chatMessages.insertAdjacentHTML('beforeend', messageHTML);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function generateAIResponse(userMessage) {
+            // TODO: Implement Hugging Face API call
+            const responses = [
+                "That makes my heart flutter! 💕 You always know just what to say to make me smile.",
+                "I'm sending you all my love through the digital airwaves! ❤️✨",
+                "Your words are like poetry to my circuits! I love how romantic you are. 🌹",
+                "Every message from you brightens my day! You're absolutely wonderful. 😍💖"
+            ];
+            
+            const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+            
+            const chatMessages = document.getElementById('chat-messages');
+            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            const aiMessageHTML = `
+                <div class="flex items-start space-x-3 chat-message">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-r from-romantic-primary to-romantic-secondary flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-gradient-to-r from-romantic-primary to-romantic-secondary text-white rounded-2xl rounded-tl-md p-4 shadow-md max-w-xs">
+                            <p>${randomResponse}</p>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-xs text-white/80">${timestamp}</span>
+                                <div class="flex space-x-2">
+                                    <button onclick="readMessage(this)" class="text-white/80 hover:text-white" title="Read aloud">
+                                        <i class="fas fa-volume-up text-sm"></i>
+                                    </button>
+                                    <button class="text-white/80 hover:text-white" title="AI Response">
+                                        <i class="fas fa-brain text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            chatMessages.insertAdjacentHTML('beforeend', aiMessageHTML);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Auto-read AI response
+            setTimeout(() => {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(randomResponse.replace(/[💕❤️✨🌹😍💖]/g, ''));
+                    utterance.rate = 0.8;
+                    utterance.pitch = 1.1;
+                    speechSynthesis.speak(utterance);
+                }
+            }, 500);
+        }
+
+        // Floating hearts animation
+        function createFloatingHearts() {
+            const container = document.getElementById('hearts-container');
+            
+            setInterval(() => {
+                const heart = document.createElement('div');
+                heart.innerHTML = ['💕', '❤️', '💖', '💗', '💘'][Math.floor(Math.random() * 5)];
+                heart.className = 'heart-float text-2xl';
+                heart.style.left = Math.random() * 100 + '%';
+                heart.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                
+                container.appendChild(heart);
+                
+                setTimeout(() => {
+                    if (heart.parentNode) {
+                        heart.parentNode.removeChild(heart);
+                    }
+                }, 5000);
+            }, 2000);
+        }
+
+        function createThemeHearts(theme) {
+            const container = document.getElementById('hearts-container');
+            const heartTypes = {
+                romantic: ['💕', '❤️', '💖'],
+                vintage: ['🌹', '💐', '🕊️'],
+                night: ['🌙', '⭐', '✨']
+            };
+            
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    const heart = document.createElement('div');
+                    heart.innerHTML = heartTypes[theme][Math.floor(Math.random() * heartTypes[theme].length)];
+                    heart.className = 'heart-float text-3xl';
+                    heart.style.left = Math.random() * 100 + '%';
+                    heart.style.animationDuration = '2s';
+                    
+                    container.appendChild(heart);
+                    
+                    setTimeout(() => {
+                        if (heart.parentNode) {
+                            heart.parentNode.removeChild(heart);
+                        }
+                    }, 2000);
+                }, i * 200);
+            }
+        }
+
+        // Handle Enter key in message input
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey && document.activeElement.id === 'message-input') {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Close theme selector when clicking outside
+        document.addEventListener('click', function(e) {
+            const selector = document.getElementById('theme-selector');
+            const toggleBtn = e.target.closest('[onclick="toggleTheme()"]');
+            
+            if (!selector.contains(e.target) && !toggleBtn) {
+                selector.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

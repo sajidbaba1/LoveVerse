@@ -10,8 +10,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Local development mode - bypass authentication
+  const isLocalDev = !process.env.REPLIT_DOMAINS && process.env.NODE_ENV === 'development';
+
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', isLocalDev ? (req: any, res) => {
+    // Return mock user for local development
+    res.json({
+      id: 'local-dev-user',
+      email: 'dev@loveverse.local',
+      firstName: 'Local',
+      lastName: 'Developer',
+      currentTheme: 'romantic',
+      musicEnabled: true
+    });
+  } : isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -23,7 +36,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chat messages routes
-  app.get('/api/messages', isAuthenticated, async (req: any, res) => {
+  app.get('/api/messages', isLocalDev ? (req: any, res) => {
+    // Return empty messages for local development
+    res.json([]);
+  } : isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const limit = parseInt(req.query.limit as string) || 50;
@@ -35,19 +51,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/messages', isAuthenticated, async (req: any, res) => {
+  app.post('/api/messages', isLocalDev ? async (req: any, res) => {
+    // Use real AI service for local development
+    try {
+      const messageData = insertMessageSchema.parse(req.body);
+
+      // Create mock user message
+      const userMessage = { id: 'mock-msg-1', ...messageData, timestamp: new Date() };
+
+      // Generate real AI response if this is a user message
+      if (messageData.messageType === 'user') {
+        const aiResponse = await huggingFaceService.generateRomanticResponse({
+          userMessage: messageData.content,
+          theme: messageData.theme,
+          partnerName: 'Local Partner',
+          relationshipContext: 'Development',
+        });
+
+        const aiMessage = { id: 'mock-ai-1', content: aiResponse, messageType: 'ai', theme: messageData.theme, timestamp: new Date() };
+        res.json({ userMessage, aiMessage });
+      } else {
+        res.json({ userMessage });
+      }
+    } catch (error) {
+      console.error("Error in local development message creation:", error);
+      res.status(500).json({ message: "Failed to create message" });
+    }
+  } : isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const messageData = insertMessageSchema.parse(req.body);
-      
+
       // Create user message
       const userMessage = await storage.createMessage(userId, messageData);
-      
+
       // Generate AI response if this is a user message
       if (messageData.messageType === 'user') {
         const user = await storage.getUser(userId);
         const preferences = await storage.getUserPreferences(userId);
-        
+
         const aiResponse = await huggingFaceService.generateRomanticResponse({
           userMessage: messageData.content,
           theme: messageData.theme,
@@ -77,7 +119,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User preferences routes
-  app.get('/api/preferences', isAuthenticated, async (req: any, res) => {
+  app.get('/api/preferences', isLocalDev ? (req: any, res) => {
+    // Return mock preferences for local development
+    res.json({
+      partnerName: 'Local Partner',
+      relationshipLength: 'Development',
+      favoriteActivities: 'Coding together',
+      loveLanguage: 'Quality Time',
+      personalityType: 'Developer'
+    });
+  } : isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const preferences = await storage.getUserPreferences(userId);
@@ -88,7 +139,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/preferences', isAuthenticated, async (req: any, res) => {
+  app.put('/api/preferences', isLocalDev ? (req: any, res) => {
+    // Mock response for local development
+    const preferencesData = insertUserPreferencesSchema.parse(req.body);
+    res.json({ ...preferencesData, id: 'mock-prefs-1' });
+  } : isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const preferencesData = insertUserPreferencesSchema.parse(req.body);
@@ -109,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { theme } = req.body;
-      
+
       if (!['romantic', 'vintage', 'night'].includes(theme)) {
         return res.status(400).json({ message: "Invalid theme" });
       }
@@ -174,11 +229,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { connectionCode } = req.body;
-      
+
       if (!connectionCode) {
         return res.status(400).json({ message: "Connection code is required" });
       }
-      
+
       const couple = await storage.connectWithPartner(userId, connectionCode);
       res.json(couple);
     } catch (error: any) {
@@ -214,11 +269,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const couple = await storage.getUserCouple(userId);
-      
+
       if (!couple) {
         return res.status(404).json({ message: "No partner connection found" });
       }
-      
+
       const limit = parseInt(req.query.limit as string) || 50;
       const messages = await storage.getCoupleMessages(couple.id, limit);
       res.json(messages);
@@ -232,19 +287,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const couple = await storage.getUserCouple(userId);
-      
+
       if (!couple) {
         return res.status(404).json({ message: "No partner connection found" });
       }
-      
+
       const messageData = insertMessageSchema.parse(req.body);
-      
+
       // Create partner message (not AI message)
       const partnerMessage = await storage.createMessage(userId, {
         ...messageData,
         messageType: 'partner'
       }, couple.id);
-      
+
       res.json({ partnerMessage });
     } catch (error) {
       console.error("Error creating couple message:", error);
